@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Batch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --border: #2a2a2a;
+      --border-bright: #3d3d3d;
+      --text: #e8e8e8;
+      --muted: #666;
+      --accent: #e8ff47;
+      --accent-dim: rgba(232, 255, 71, 0.12);
+      --danger: #ff4747;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+
+    header h1 {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+    }
+
+    header span {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      grid-template-rows: 1fr auto;
+      gap: 0;
+    }
+
+    .input-pane {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pane-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .line-count {
+      color: var(--accent);
+      font-size: 10px;
+    }
+
+    textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      padding: 20px;
+      caret-color: var(--accent);
+    }
+
+    textarea::placeholder {
+      color: #333;
+    }
+
+    .settings-pane {
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      border-bottom: 1px solid var(--border);
+      overflow-y: auto;
+    }
+
+    .setting-group label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .seg-control {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .seg-control button {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 8px 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+      border-right: 1px solid var(--border);
+    }
+
+    .seg-control button:last-child {
+      border-right: none;
+    }
+
+    .seg-control button.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .seg-control button:hover:not(.active) {
+      background: #1e1e1e;
+      color: var(--text);
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type=range] {
+      flex: 1;
+      appearance: none;
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    .slider-val {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    .color-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .color-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .color-item span {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    input[type=color] {
+      width: 100%;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      cursor: pointer;
+      padding: 2px;
+    }
+
+    .action-pane {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-generate {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-generate:hover {
+      background: #f0ff70;
+      transform: translateY(-1px);
+    }
+
+    .btn-generate:active {
+      transform: translateY(0);
+    }
+
+    .btn-generate:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .progress-wrap {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .progress-wrap.visible {
+      display: flex;
+    }
+
+    .progress-bar-track {
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.1s;
+    }
+
+    .progress-text {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .status {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      min-height: 16px;
+    }
+
+    .status.ok {
+      color: var(--accent);
+    }
+
+    .status.err {
+      color: var(--danger);
+    }
+
+    .preview-grid {
+      grid-column: 1 / -1;
+      border-top: 1px solid var(--border);
+      padding: 20px;
+      display: none;
+    }
+
+    .preview-grid.visible {
+      display: block;
+    }
+
+    .preview-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .qr-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .qr-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      animation: fadeIn 0.2s ease both;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .qr-item canvas {
+      display: block;
+    }
+
+    .qr-caption {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+      max-width: 80px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    #offscreen {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+    }
+
+    @media (max-width: 700px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .settings-pane {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .input-pane {
+        border-right: none;
+        min-height: 240px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>QR Batch</h1>
+    <span>bulk qr code generator</span>
+  </header>
+
+  <main>
+    <div class="input-pane">
+      <div class="pane-label">
+        Input <span>one item per line</span>
+        <span class="line-count" id="lineCount">0 lines</span>
+      </div>
+      <textarea id="inputText"
+        placeholder="Paste your text here&#10;One URL or string per line&#10;Handles 1000+ lines"></textarea>
+    </div>
+
+    <div style="display:flex;flex-direction:column;border-bottom:1px solid var(--border);">
+      <div class="pane-label">Settings</div>
+      <div class="settings-pane">
+
+        <div class="setting-group">
+          <label>Error Correction</label>
+          <div class="seg-control" id="ecLevel">
+            <button data-val="L">L</button>
+            <button data-val="M" class="active">M</button>
+            <button data-val="Q">Q</button>
+            <button data-val="H">H</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label>QR Size (px)</label>
+          <div class="slider-row">
+            <input type="range" id="qrSize" min="64" max="512" step="32" value="256">
+            <span class="slider-val" id="qrSizeVal">256</span>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label>Margin (modules)</label>
+          <div class="slider-row">
+            <input type="range" id="qrMargin" min="0" max="8" step="1" value="4">
+            <span class="slider-val" id="qrMarginVal">4</span>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label>Colors</label>
+          <div class="color-row">
+            <div class="color-item">
+              <span>Dark</span>
+              <input type="color" id="colorDark" value="#000000">
+            </div>
+            <div class="color-item">
+              <span>Light</span>
+              <input type="color" id="colorLight" value="#ffffff">
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label>Filename prefix</label>
+          <input type="text" id="filePrefix" value="qr" style="
+          width:100%;background:var(--surface);border:1px solid var(--border);
+          border-radius:4px;color:var(--text);font-family:var(--mono);
+          font-size:12px;padding:8px 10px;outline:none;
+        ">
+        </div>
+
+        <div class="setting-group">
+          <label>Preview</label>
+          <div class="seg-control" id="previewToggle">
+            <button data-val="none" class="active">None</button>
+            <button data-val="first10">First 10</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="action-pane">
+        <button class="btn-generate" id="generateBtn" disabled>Generate &amp; Download ZIP</button>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-text" id="progressText">Generating...</div>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+
+    <div class="preview-grid" id="previewGrid">
+      <div class="preview-label">Preview (first 10)</div>
+      <div class="qr-grid" id="qrGrid"></div>
+    </div>
+  </main>
+
+  <div id="offscreen"></div>
+
+  <script>
+    let lines = [];
+    let ecLevel = 'M';
+    let previewMode = 'none';
+
+    const inputText = document.getElementById('inputText');
+    const lineCount = document.getElementById('lineCount');
+    const generateBtn = document.getElementById('generateBtn');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const statusEl = document.getElementById('status');
+    const previewGrid = document.getElementById('previewGrid');
+    const qrGrid = document.getElementById('qrGrid');
+    const offscreen = document.getElementById('offscreen');
+    const qrSizeInput = document.getElementById('qrSize');
+    const qrSizeVal = document.getElementById('qrSizeVal');
+    const qrMarginInput = document.getElementById('qrMargin');
+    const qrMarginVal = document.getElementById('qrMarginVal');
+
+    inputText.addEventListener('input', () => {
+      lines = inputText.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      lineCount.textContent = `${lines.length.toLocaleString()} line${lines.length !== 1 ? 's' : ''}`;
+      generateBtn.disabled = lines.length === 0;
+      setStatus('');
+    });
+
+    document.getElementById('ecLevel').addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      document.querySelectorAll('#ecLevel button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ecLevel = btn.dataset.val;
+    });
+
+    document.getElementById('previewToggle').addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      document.querySelectorAll('#previewToggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      previewMode = btn.dataset.val;
+    });
+
+    qrSizeInput.addEventListener('input', () => qrSizeVal.textContent = qrSizeInput.value);
+    qrMarginInput.addEventListener('input', () => qrMarginVal.textContent = qrMarginInput.value);
+
+    function setStatus(msg, type = '') {
+      statusEl.textContent = msg;
+      statusEl.className = 'status' + (type ? ` ${type}` : '');
+    }
+
+    function setProgress(n, total) {
+      const pct = Math.round((n / total) * 100);
+      progressFill.style.width = pct + '%';
+      progressText.textContent = `${n.toLocaleString()} / ${total.toLocaleString()} (${pct}%)`;
+    }
+
+    function makeQR(text, size, margin, darkColor, lightColor) {
+      return new Promise((resolve, reject) => {
+        const container = document.createElement('div');
+        offscreen.appendChild(container);
+        try {
+          new QRCode(container, {
+            text,
+            width: size,
+            height: size,
+            colorDark: darkColor,
+            colorLight: lightColor,
+            correctLevel: QRCode.CorrectLevel[ecLevel],
+            margin,
+          });
+          const canvas = container.querySelector('canvas');
+          if (!canvas) { offscreen.removeChild(container); reject(new Error('No canvas')); return; }
+
+          const pad = Math.max(16, Math.round(size * 0.08));
+          const fontSize = Math.max(11, Math.round(size * 0.045));
+          const labelMargin = Math.round(fontSize * 0.6);
+          const totalHeight = canvas.height + pad * 2 + labelMargin + fontSize + pad; // safe area padding + qr + text label
+
+          const out = document.createElement('canvas');
+          out.width = canvas.width + pad * 2;
+          out.height = totalHeight;
+          const ctx = out.getContext('2d');
+
+          ctx.fillStyle = lightColor;
+          ctx.fillRect(0, 0, out.width, out.height);
+
+          ctx.drawImage(canvas, pad, pad);
+
+          ctx.fillStyle = darkColor;
+          ctx.font = `${fontSize}px "Courier New", Courier, monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+
+          const maxWidth = out.width - pad * 2;
+          let label = text;
+          while (ctx.measureText(label).width > maxWidth && label.length > 4) {
+            label = label.slice(0, -4) + '...';
+          }
+          ctx.fillText(label, out.width / 2, canvas.height + pad + labelMargin);
+
+          offscreen.removeChild(container);
+          resolve(out);
+        } catch (e) {
+          if (offscreen.contains(container)) offscreen.removeChild(container);
+          reject(e);
+        }
+      });
+    }
+
+    function yieldToUI() {
+      return new Promise(r => setTimeout(r, 0));
+    }
+
+    generateBtn.addEventListener('click', async () => {
+      if (lines.length === 0) return;
+
+      const size = parseInt(qrSizeInput.value);
+      const margin = parseInt(qrMarginInput.value);
+      const darkColor = document.getElementById('colorDark').value;
+      const lightColor = document.getElementById('colorLight').value;
+      const prefix = document.getElementById('filePrefix').value.trim() || 'qr';
+
+      generateBtn.disabled = true;
+      progressWrap.classList.add('visible');
+      setProgress(0, lines.length);
+      setStatus('');
+      qrGrid.innerHTML = '';
+      previewGrid.classList.remove('visible');
+
+      const zip = new JSZip();
+      const BATCH = 20;
+      let errors = 0;
+
+      try {
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const filename = `${prefix}_${String(i + 1).padStart(4, '0')}.png`;
+
+          try {
+            const canvas = await makeQR(line, size, margin, darkColor, lightColor);
+            const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+            zip.file(filename, blob);
+
+            if (previewMode === 'first10' && i < 10) {
+              const item = document.createElement('div');
+              item.className = 'qr-item';
+              item.style.animationDelay = `${i * 30}ms`;
+              const cap = document.createElement('div');
+              cap.className = 'qr-caption';
+              cap.title = line;
+              cap.textContent = line;
+              const previewCanvas = document.createElement('canvas');
+              previewCanvas.width = 80; previewCanvas.height = 80;
+              previewCanvas.getContext('2d').drawImage(canvas, 0, 0, 80, 80);
+              item.appendChild(previewCanvas);
+              item.appendChild(cap);
+              qrGrid.appendChild(item);
+            }
+          } catch (e) {
+            errors++;
+          }
+
+          if ((i + 1) % BATCH === 0) {
+            setProgress(i + 1, lines.length);
+            await yieldToUI();
+          }
+        }
+
+        setProgress(lines.length, lines.length);
+        if (previewMode === 'first10') previewGrid.classList.add('visible');
+
+        setStatus('Packing ZIP...');
+        const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, meta => {
+          progressText.textContent = `Packing ZIP... ${meta.percent.toFixed(0)}%`;
+        });
+
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${prefix}_qrcodes.zip`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+        const msg = errors > 0
+          ? `Done. ${lines.length - errors} generated, ${errors} failed.`
+          : `Done. ${lines.length.toLocaleString()} QR codes downloaded.`;
+        setStatus(msg, errors ? 'err' : 'ok');
+
+      } catch (e) {
+        setStatus('Error: ' + e.message, 'err');
+      } finally {
+        progressWrap.classList.remove('visible');
+        generateBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+
+</html>
