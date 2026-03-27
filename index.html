@@ -612,7 +612,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const pad = Math.max(16, Math.round(size * 0.08));
           const fontSize = Math.max(11, Math.round(size * 0.045));
           const labelMargin = Math.round(fontSize * 0.6);
-          const totalHeight = canvas.height + pad * 2 + labelMargin + fontSize + pad; // safe area padding + qr + text label
+          const totalHeight = canvas.height + pad * 2 + labelMargin + fontSize + pad;
 
           const out = document.createElement('canvas');
           out.width = canvas.width + pad * 2;
@@ -637,7 +637,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           ctx.fillText(label, out.width / 2, canvas.height + pad + labelMargin);
 
           offscreen.removeChild(container);
-          resolve(out);
+          
+          requestAnimationFrame(() => {
+            resolve(out);
+          });
         } catch (e) {
           if (offscreen.contains(container)) offscreen.removeChild(container);
           reject(e);
@@ -676,7 +679,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
           try {
             const canvas = await makeQR(line, size, margin, darkColor, lightColor);
-            const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+            const blob = await new Promise((resolve, reject) => {
+              canvas.toBlob(b => {
+                if (b) resolve(b);
+                else reject(new Error('Failed to create blob'));
+              }, 'image/png');
+            });
             zip.file(filename, blob);
 
             if (previewMode === 'first10' && i < 10) {
